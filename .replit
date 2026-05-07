@@ -24,13 +24,13 @@ args = "Discord Bot"
 name = "Discord Bot"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd discord-bot && python bot.py"
 waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [agent]
 stack = "PNPM_WORKSPACE"
