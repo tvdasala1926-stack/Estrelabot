@@ -1,6 +1,7 @@
 import os
 import discord
 from discord.ext import commands
+from keep_alive import keep_alive
 
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
 
@@ -52,4 +53,5 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+    keep_alive()
     asyncio.run(main())
