@@ -13,7 +13,7 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
-COGS = ["cogs.general", "cogs.fun", "cogs.moderation"]
+COGS = ["cogs.general", "cogs.fun", "cogs.moderation", "cogs.estrelas"]
 
 
 @bot.event

@@ -41,6 +41,14 @@ class General(commands.Cog):
             inline=False,
         )
         embed.add_field(
+            name="Estrelas",
+            value=(
+                "`/estrela @membro` — Dá uma estrela a um membro\n"
+                "`/ranking` — Ranking de estrelas do servidor"
+            ),
+            inline=False,
+        )
+        embed.add_field(
             name="Moderation",
             value=(
                 "`/kick <member> [reason]` — Kick a member\n"
