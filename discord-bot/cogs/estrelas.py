@@ -8,6 +8,13 @@ from discord.ext import commands
 DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "estrelas.json")
 LOG_CHANNEL_KEYWORD = "mérito"
 MAX_HISTORICO = 50
+MILESTONES = {5, 10, 15, 20}
+MILESTONE_MSGS = {
+    5:  "🌟 Incrível! {mention} acaba de conquistar **5 estrelas**! Que dedicação!",
+    10: "🎉 Uau! {mention} chegou a **10 estrelas**! Um exemplo para o servidor!",
+    15: "🏅 Extraordinário! {mention} alcançou **15 estrelas**! Parabéns pelo mérito!",
+    20: "👑 LENDÁRIO! {mention} atingiu **20 estrelas**! O servidor é grato por tudo!",
+}
 
 
 def _load() -> dict:
@@ -28,14 +35,17 @@ def _base_name(nickname: str) -> str:
     return nickname.replace("⭐", "").strip()
 
 
-def _record(entry: dict, acao: str, por: discord.Member) -> None:
+def _record(entry: dict, acao: str, por: discord.Member, motivo: str = None) -> None:
     historico = entry.setdefault("historico", [])
-    historico.append({
+    evento = {
         "acao": acao,
         "por": str(por),
         "por_id": str(por.id),
         "data": discord.utils.utcnow().replace(tzinfo=timezone.utc).isoformat(),
-    })
+    }
+    if motivo:
+        evento["motivo"] = motivo
+    historico.append(evento)
     if len(historico) > MAX_HISTORICO:
         entry["historico"] = historico[-MAX_HISTORICO:]
 
@@ -206,9 +216,12 @@ class Estrelas(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="estrela", description="Dá uma estrela para um membro do servidor")
-    @app_commands.describe(membro="O membro que vai receber a estrela")
+    @app_commands.describe(
+        membro="O membro que vai receber a estrela",
+        motivo="Motivo da estrela (opcional)",
+    )
     @app_commands.default_permissions(administrator=True)
-    async def estrela(self, interaction: discord.Interaction, membro: discord.Member):
+    async def estrela(self, interaction: discord.Interaction, membro: discord.Member, motivo: str = None):
         if membro.bot:
             await interaction.response.send_message("Bots não podem receber estrelas.", ephemeral=True)
             return
@@ -227,7 +240,7 @@ class Estrelas(commands.Cog):
         entry["estrelas"] += 1
         entry["nome"] = membro.name
         total = entry["estrelas"]
-        _record(entry, "concedida", interaction.user)
+        _record(entry, "concedida", interaction.user, motivo)
         _save(data)
 
         base = _base_name(membro.display_name)
@@ -240,7 +253,9 @@ class Estrelas(commands.Cog):
 
         embed = discord.Embed(title="⭐ Estrela concedida!", color=discord.Color.gold())
         embed.add_field(name="Membro", value=membro.mention, inline=True)
-        embed.add_field(name="Total de estrelas", value=f"{'⭐' * total} ({total})", inline=True)
+        embed.add_field(name="Total de estrelas", value=f"{'⭐' * min(total, 10)} ({total})", inline=True)
+        if motivo:
+            embed.add_field(name="Motivo", value=motivo, inline=False)
         embed.add_field(name="Apelido", value=apelido_msg, inline=False)
         embed.set_footer(text=f"Concedida por {interaction.user}")
         await interaction.followup.send(embed=embed)
@@ -249,8 +264,14 @@ class Estrelas(commands.Cog):
         log_embed.add_field(name="Membro", value=membro.mention, inline=True)
         log_embed.add_field(name="Concedida por", value=interaction.user.mention, inline=True)
         log_embed.add_field(name="Total atual", value=f"{'⭐' * min(total, 10)} ({total})", inline=True)
+        if motivo:
+            log_embed.add_field(name="Motivo", value=motivo, inline=False)
         log_embed.timestamp = discord.utils.utcnow()
         await _send_log(interaction.guild, log_embed)
+
+        if total in MILESTONES:
+            msg = MILESTONE_MSGS[total].format(mention=membro.mention)
+            await interaction.followup.send(content=msg)
 
     @app_commands.command(name="tirar-estrela", description="Remove uma estrela de um membro")
     @app_commands.describe(membro="O membro que vai perder a estrela")
@@ -364,7 +385,10 @@ class Estrelas(commands.Cog):
             else:
                 emoji = "🔄"
 
-            linhas.append(f"{emoji} **{acao.capitalize()}** por `{ev['por']}` — {timestamp}")
+            linha = f"{emoji} **{acao.capitalize()}** por `{ev['por']}` — {timestamp}"
+            if ev.get("motivo"):
+                linha += f"\n　　*Motivo: {ev['motivo']}*"
+            linhas.append(linha)
 
         embed.add_field(
             name=f"Últimos {len(ultimos)} eventos (mais recentes primeiro)",
