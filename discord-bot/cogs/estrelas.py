@@ -5,7 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "estrelas.json")
-LOG_CHANNEL = "logs-estrelas"
+LOG_CHANNEL_KEYWORD = "mérito"
 
 
 def _load() -> dict:
@@ -27,7 +27,10 @@ def _base_name(nickname: str) -> str:
 
 
 async def _send_log(guild: discord.Guild, embed: discord.Embed) -> None:
-    channel = discord.utils.get(guild.text_channels, name=LOG_CHANNEL)
+    channel = next(
+        (c for c in guild.text_channels if LOG_CHANNEL_KEYWORD in c.name.lower()),
+        None,
+    )
     if channel:
         try:
             await channel.send(embed=embed)
