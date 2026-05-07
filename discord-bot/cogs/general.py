@@ -46,6 +46,7 @@ class General(commands.Cog):
                 "`/estrela @membro` — Dá uma estrela (admin)\n"
                 "`/tirar-estrela @membro` — Remove uma estrela\n"
                 "`/resetar-estrelas @membro` — Zera todas as estrelas (admin)\n"
+                "`/historico [@membro]` — Histórico de estrelas com datas\n"
                 "`/perfil [@membro]` — Perfil completo com estrelas e infos\n"
                 "`/minhas-estrelas` — Veja suas estrelas e posição no ranking\n"
                 "`/ranking` — Ranking de estrelas do servidor"

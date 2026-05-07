@@ -1,11 +1,13 @@
 import json
 import os
+from datetime import timezone
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "estrelas.json")
 LOG_CHANNEL_KEYWORD = "mérito"
+MAX_HISTORICO = 50
 
 
 def _load() -> dict:
@@ -24,6 +26,18 @@ def _save(data: dict) -> None:
 
 def _base_name(nickname: str) -> str:
     return nickname.replace("⭐", "").strip()
+
+
+def _record(entry: dict, acao: str, por: discord.Member) -> None:
+    historico = entry.setdefault("historico", [])
+    historico.append({
+        "acao": acao,
+        "por": str(por),
+        "por_id": str(por.id),
+        "data": discord.utils.utcnow().replace(tzinfo=timezone.utc).isoformat(),
+    })
+    if len(historico) > MAX_HISTORICO:
+        entry["historico"] = historico[-MAX_HISTORICO:]
 
 
 async def _send_log(guild: discord.Guild, embed: discord.Embed) -> None:
@@ -67,13 +81,13 @@ class ConfirmacaoView(discord.ui.View):
         if not entry or entry["estrelas"] <= 0:
             await interaction.response.edit_message(
                 content=f"❌ {self.membro.mention} não tem estrelas para remover.",
-                embed=None,
-                view=self,
+                embed=None, view=self,
             )
             return
 
         entry["estrelas"] -= 1
         total = entry["estrelas"]
+        _record(entry, "removida", interaction.user)
         _save(data)
 
         base = _base_name(self.membro.display_name)
@@ -145,8 +159,9 @@ class ResetarView(discord.ui.View):
         guild_id = str(interaction.guild_id)
         user_id = str(self.membro.id)
         guild_data = data.setdefault(guild_id, {})
-        if user_id in guild_data:
-            guild_data[user_id]["estrelas"] = 0
+        entry = guild_data.setdefault(user_id, {"nome": self.membro.name, "estrelas": 0})
+        entry["estrelas"] = 0
+        _record(entry, f"resetada ({self.total_atual} estrelas)", interaction.user)
         _save(data)
 
         base = _base_name(self.membro.display_name)
@@ -212,6 +227,7 @@ class Estrelas(commands.Cog):
         entry["estrelas"] += 1
         entry["nome"] = membro.name
         total = entry["estrelas"]
+        _record(entry, "concedida", interaction.user)
         _save(data)
 
         base = _base_name(membro.display_name)
@@ -232,9 +248,7 @@ class Estrelas(commands.Cog):
         log_embed = discord.Embed(title="⭐ Estrela concedida", color=discord.Color.gold())
         log_embed.add_field(name="Membro", value=membro.mention, inline=True)
         log_embed.add_field(name="Concedida por", value=interaction.user.mention, inline=True)
-        log_embed.add_field(
-            name="Total atual", value=f"{'⭐' * min(total, 10)} ({total})", inline=True
-        )
+        log_embed.add_field(name="Total atual", value=f"{'⭐' * min(total, 10)} ({total})", inline=True)
         log_embed.timestamp = discord.utils.utcnow()
         await _send_log(interaction.guild, log_embed)
 
@@ -269,7 +283,6 @@ class Estrelas(commands.Cog):
             color=discord.Color.orange(),
         )
         embed.set_footer(text="Esta ação expira em 30 segundos.")
-
         view = ConfirmacaoView(membro=membro, moderador=interaction.user)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
@@ -302,9 +315,64 @@ class Estrelas(commands.Cog):
             color=discord.Color.dark_red(),
         )
         embed.set_footer(text="Esta ação expira em 30 segundos.")
-
         view = ResetarView(membro=membro, moderador=interaction.user, total_atual=total_atual)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @app_commands.command(name="historico", description="Mostra o histórico de estrelas de um membro")
+    @app_commands.describe(membro="O membro a consultar (padrão: você mesmo)")
+    async def historico(self, interaction: discord.Interaction, membro: discord.Member = None):
+        membro = membro or interaction.user
+
+        data = _load()
+        guild_data = data.get(str(interaction.guild_id), {})
+        entry = guild_data.get(str(membro.id))
+        historico = entry.get("historico", []) if entry else []
+        total = entry["estrelas"] if entry else 0
+
+        if not historico:
+            await interaction.response.send_message(
+                f"{membro.mention} não tem nenhum histórico de estrelas ainda.", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title=f"📋 Histórico de {membro.display_name}",
+            color=discord.Color.gold() if total > 0 else discord.Color.greyple(),
+        )
+        embed.set_thumbnail(url=membro.display_avatar.url)
+        embed.add_field(
+            name="Total atual",
+            value=f"{'⭐' * min(total, 10)} ({total})" if total > 0 else "Nenhuma",
+            inline=False,
+        )
+
+        ultimos = list(reversed(historico[-15:]))
+        linhas = []
+        for ev in ultimos:
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(ev["data"])
+                timestamp = f"<t:{int(dt.timestamp())}:d>"
+            except Exception:
+                timestamp = "?"
+
+            acao = ev["acao"]
+            if acao == "concedida":
+                emoji = "⭐"
+            elif acao == "removida":
+                emoji = "🗑️"
+            else:
+                emoji = "🔄"
+
+            linhas.append(f"{emoji} **{acao.capitalize()}** por `{ev['por']}` — {timestamp}")
+
+        embed.add_field(
+            name=f"Últimos {len(ultimos)} eventos (mais recentes primeiro)",
+            value="\n".join(linhas),
+            inline=False,
+        )
+        embed.set_footer(text=f"Total de eventos registrados: {len(historico)}")
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="perfil", description="Mostra o perfil completo de um membro com estrelas e informações")
     @app_commands.describe(membro="O membro a consultar (padrão: você mesmo)")
@@ -323,7 +391,6 @@ class Estrelas(commands.Cog):
             reverse=True,
         )
         posicao = next((i + 1 for i, (uid, _) in enumerate(sorted_members) if uid == user_id), None)
-
         roles = [r.mention for r in membro.roles if r.name != "@everyone"]
 
         embed = discord.Embed(
