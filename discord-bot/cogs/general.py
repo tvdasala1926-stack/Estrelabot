@@ -45,6 +45,7 @@ class General(commands.Cog):
             value=(
                 "`/estrela @membro` — Dá uma estrela a um membro\n"
                 "`/tirar-estrela @membro` — Remove uma estrela de um membro\n"
+                "`/perfil [@membro]` — Perfil completo com estrelas e infos\n"
                 "`/minhas-estrelas` — Veja suas estrelas e posição no ranking\n"
                 "`/ranking` — Ranking de estrelas do servidor"
             ),

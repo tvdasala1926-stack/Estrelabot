@@ -184,6 +184,75 @@ class Estrelas(commands.Cog):
         view = ConfirmacaoView(membro=membro, moderador=interaction.user)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
+    @app_commands.command(name="perfil", description="Mostra o perfil completo de um membro com estrelas e informações")
+    @app_commands.describe(membro="O membro a consultar (padrão: você mesmo)")
+    async def perfil(self, interaction: discord.Interaction, membro: discord.Member = None):
+        membro = membro or interaction.user
+
+        data = _load()
+        guild_data = data.get(str(interaction.guild_id), {})
+        user_id = str(membro.id)
+        entry = guild_data.get(user_id)
+        total = entry["estrelas"] if entry else 0
+
+        sorted_members = sorted(
+            [(uid, info) for uid, info in guild_data.items() if info["estrelas"] > 0],
+            key=lambda x: x[1]["estrelas"],
+            reverse=True,
+        )
+        posicao = next((i + 1 for i, (uid, _) in enumerate(sorted_members) if uid == user_id), None)
+
+        roles = [r.mention for r in membro.roles if r.name != "@everyone"]
+
+        embed = discord.Embed(
+            title=f"{'⭐ ' if total > 0 else ''}Perfil de {membro.display_name}",
+            color=discord.Color.gold() if total > 0 else discord.Color.blurple(),
+        )
+        embed.set_thumbnail(url=membro.display_avatar.url)
+
+        embed.add_field(
+            name="⭐ Estrelas",
+            value=f"{'⭐' * min(total, 10)} **({total})**" if total > 0 else "Nenhuma",
+            inline=True,
+        )
+        embed.add_field(
+            name="🏆 Ranking",
+            value=f"**#{posicao}** de {len(sorted_members)}" if posicao else "Fora do ranking",
+            inline=True,
+        )
+        embed.add_field(name="\u200b", value="\u200b", inline=True)
+
+        embed.add_field(
+            name="📅 Entrou no servidor",
+            value=discord.utils.format_dt(membro.joined_at, style="D") if membro.joined_at else "Desconhecido",
+            inline=True,
+        )
+        embed.add_field(
+            name="🎂 Conta criada em",
+            value=discord.utils.format_dt(membro.created_at, style="D"),
+            inline=True,
+        )
+        embed.add_field(name="\u200b", value="\u200b", inline=True)
+
+        embed.add_field(
+            name=f"🎭 Cargos ({len(roles)})",
+            value=", ".join(roles) if roles else "Nenhum cargo",
+            inline=False,
+        )
+
+        if posicao == 1 and total > 0:
+            embed.set_footer(text="👑 Líder do ranking de estrelas!")
+        elif total == 0:
+            embed.set_footer(text="Este membro ainda não tem estrelas.")
+        else:
+            acima = sorted_members[posicao - 2]
+            faltam = acima[1]["estrelas"] - total
+            nome_acima = interaction.guild.get_member(int(acima[0]))
+            nome_acima = nome_acima.display_name if nome_acima else acima[1]["nome"]
+            embed.set_footer(text=f"Faltam {faltam} estrela(s) para superar {nome_acima}")
+
+        await interaction.response.send_message(embed=embed)
+
     @app_commands.command(name="minhas-estrelas", description="Veja suas estrelas e sua posição no ranking")
     async def minhas_estrelas(self, interaction: discord.Interaction):
         data = _load()
