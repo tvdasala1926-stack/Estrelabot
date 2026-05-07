@@ -5,6 +5,7 @@ from discord import app_commands
 from discord.ext import commands
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "estrelas.json")
+LOG_CHANNEL = "logs-estrelas"
 
 
 def _load() -> dict:
@@ -25,12 +26,20 @@ def _base_name(nickname: str) -> str:
     return nickname.replace("⭐", "").strip()
 
 
+async def _send_log(guild: discord.Guild, embed: discord.Embed) -> None:
+    channel = discord.utils.get(guild.text_channels, name=LOG_CHANNEL)
+    if channel:
+        try:
+            await channel.send(embed=embed)
+        except discord.Forbidden:
+            pass
+
+
 class ConfirmacaoView(discord.ui.View):
     def __init__(self, membro: discord.Member, moderador: discord.Member):
         super().__init__(timeout=30)
         self.membro = membro
         self.moderador = moderador
-        self.confirmado = False
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.moderador.id:
@@ -42,7 +51,6 @@ class ConfirmacaoView(discord.ui.View):
 
     @discord.ui.button(label="Confirmar", style=discord.ButtonStyle.danger, emoji="🗑️")
     async def confirmar(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.confirmado = True
         for item in self.children:
             item.disabled = True
         self.stop()
@@ -73,10 +81,7 @@ class ConfirmacaoView(discord.ui.View):
         except discord.Forbidden:
             apelido_msg = "Não foi possível editar o apelido (sem permissão sobre esse membro)"
 
-        embed = discord.Embed(
-            title="🗑️ Estrela removida",
-            color=discord.Color.red(),
-        )
+        embed = discord.Embed(title="🗑️ Estrela removida", color=discord.Color.red())
         embed.add_field(name="Membro", value=self.membro.mention, inline=True)
         embed.add_field(
             name="Estrelas restantes",
@@ -86,6 +91,81 @@ class ConfirmacaoView(discord.ui.View):
         embed.add_field(name="Apelido", value=apelido_msg, inline=False)
         embed.set_footer(text=f"Removida por {interaction.user}")
         await interaction.response.edit_message(content=None, embed=embed, view=self)
+
+        log_embed = discord.Embed(title="🗑️ Estrela removida", color=discord.Color.red())
+        log_embed.add_field(name="Membro", value=self.membro.mention, inline=True)
+        log_embed.add_field(name="Removida por", value=interaction.user.mention, inline=True)
+        log_embed.add_field(
+            name="Total atual",
+            value=f"{'⭐' * total} ({total})" if total > 0 else "Nenhuma",
+            inline=True,
+        )
+        log_embed.timestamp = discord.utils.utcnow()
+        await _send_log(interaction.guild, log_embed)
+
+    @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.secondary, emoji="✖️")
+    async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for item in self.children:
+            item.disabled = True
+        self.stop()
+        await interaction.response.edit_message(
+            content="❌ Operação cancelada.", embed=None, view=self
+        )
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+
+class ResetarView(discord.ui.View):
+    def __init__(self, membro: discord.Member, moderador: discord.Member, total_atual: int):
+        super().__init__(timeout=30)
+        self.membro = membro
+        self.moderador = moderador
+        self.total_atual = total_atual
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.moderador.id:
+            await interaction.response.send_message(
+                "Só quem usou o comando pode confirmar.", ephemeral=True
+            )
+            return False
+        return True
+
+    @discord.ui.button(label="Resetar", style=discord.ButtonStyle.danger, emoji="⚠️")
+    async def confirmar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for item in self.children:
+            item.disabled = True
+        self.stop()
+
+        data = _load()
+        guild_id = str(interaction.guild_id)
+        user_id = str(self.membro.id)
+        guild_data = data.setdefault(guild_id, {})
+        if user_id in guild_data:
+            guild_data[user_id]["estrelas"] = 0
+        _save(data)
+
+        base = _base_name(self.membro.display_name)
+        try:
+            await self.membro.edit(nick=base if base != self.membro.name else None)
+            apelido_msg = f"Apelido atualizado para **{base or self.membro.name}**"
+        except discord.Forbidden:
+            apelido_msg = "Não foi possível editar o apelido (sem permissão sobre esse membro)"
+
+        embed = discord.Embed(title="🔄 Estrelas resetadas", color=discord.Color.dark_red())
+        embed.add_field(name="Membro", value=self.membro.mention, inline=True)
+        embed.add_field(name="Estrelas removidas", value=str(self.total_atual), inline=True)
+        embed.add_field(name="Apelido", value=apelido_msg, inline=False)
+        embed.set_footer(text=f"Resetado por {interaction.user}")
+        await interaction.response.edit_message(content=None, embed=embed, view=self)
+
+        log_embed = discord.Embed(title="🔄 Estrelas resetadas", color=discord.Color.dark_red())
+        log_embed.add_field(name="Membro", value=self.membro.mention, inline=True)
+        log_embed.add_field(name="Resetado por", value=interaction.user.mention, inline=True)
+        log_embed.add_field(name="Estrelas removidas", value=str(self.total_atual), inline=True)
+        log_embed.timestamp = discord.utils.utcnow()
+        await _send_log(interaction.guild, log_embed)
 
     @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.secondary, emoji="✖️")
     async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -109,7 +189,7 @@ class Estrelas(commands.Cog):
 
     @app_commands.command(name="estrela", description="Dá uma estrela para um membro do servidor")
     @app_commands.describe(membro="O membro que vai receber a estrela")
-    @app_commands.default_permissions(manage_nicknames=True)
+    @app_commands.default_permissions(administrator=True)
     async def estrela(self, interaction: discord.Interaction, membro: discord.Member):
         if membro.bot:
             await interaction.response.send_message("Bots não podem receber estrelas.", ephemeral=True)
@@ -139,15 +219,21 @@ class Estrelas(commands.Cog):
         except discord.Forbidden:
             apelido_msg = "Não foi possível editar o apelido (sem permissão sobre esse membro)"
 
-        embed = discord.Embed(
-            title="⭐ Estrela concedida!",
-            color=discord.Color.gold(),
-        )
+        embed = discord.Embed(title="⭐ Estrela concedida!", color=discord.Color.gold())
         embed.add_field(name="Membro", value=membro.mention, inline=True)
         embed.add_field(name="Total de estrelas", value=f"{'⭐' * total} ({total})", inline=True)
         embed.add_field(name="Apelido", value=apelido_msg, inline=False)
         embed.set_footer(text=f"Concedida por {interaction.user}")
         await interaction.followup.send(embed=embed)
+
+        log_embed = discord.Embed(title="⭐ Estrela concedida", color=discord.Color.gold())
+        log_embed.add_field(name="Membro", value=membro.mention, inline=True)
+        log_embed.add_field(name="Concedida por", value=interaction.user.mention, inline=True)
+        log_embed.add_field(
+            name="Total atual", value=f"{'⭐' * min(total, 10)} ({total})", inline=True
+        )
+        log_embed.timestamp = discord.utils.utcnow()
+        await _send_log(interaction.guild, log_embed)
 
     @app_commands.command(name="tirar-estrela", description="Remove uma estrela de um membro")
     @app_commands.describe(membro="O membro que vai perder a estrela")
@@ -184,6 +270,39 @@ class Estrelas(commands.Cog):
         view = ConfirmacaoView(membro=membro, moderador=interaction.user)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
+    @app_commands.command(name="resetar-estrelas", description="Zera todas as estrelas de um membro e remove os ⭐ do apelido")
+    @app_commands.describe(membro="O membro que terá as estrelas zeradas")
+    @app_commands.default_permissions(administrator=True)
+    async def resetar_estrelas(self, interaction: discord.Interaction, membro: discord.Member):
+        if membro.bot:
+            await interaction.response.send_message("Bots não têm estrelas.", ephemeral=True)
+            return
+
+        data = _load()
+        guild_data = data.get(str(interaction.guild_id), {})
+        entry = guild_data.get(str(membro.id))
+        total_atual = entry["estrelas"] if entry else 0
+
+        if total_atual <= 0:
+            await interaction.response.send_message(
+                f"{membro.mention} já não tem nenhuma estrela.", ephemeral=True
+            )
+            return
+
+        embed = discord.Embed(
+            title="⚠️ Confirmar reset de estrelas",
+            description=(
+                f"Tem certeza que quer **zerar todas as estrelas** de {membro.mention}?\n\n"
+                f"Estrelas atuais: {'⭐' * min(total_atual, 10)} **({total_atual})**\n"
+                f"Após o reset: **0 estrelas** e ⭐ removidos do apelido."
+            ),
+            color=discord.Color.dark_red(),
+        )
+        embed.set_footer(text="Esta ação expira em 30 segundos.")
+
+        view = ResetarView(membro=membro, moderador=interaction.user, total_atual=total_atual)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
     @app_commands.command(name="perfil", description="Mostra o perfil completo de um membro com estrelas e informações")
     @app_commands.describe(membro="O membro a consultar (padrão: você mesmo)")
     async def perfil(self, interaction: discord.Interaction, membro: discord.Member = None):
@@ -209,7 +328,6 @@ class Estrelas(commands.Cog):
             color=discord.Color.gold() if total > 0 else discord.Color.blurple(),
         )
         embed.set_thumbnail(url=membro.display_avatar.url)
-
         embed.add_field(
             name="⭐ Estrelas",
             value=f"{'⭐' * min(total, 10)} **({total})**" if total > 0 else "Nenhuma",
@@ -221,7 +339,6 @@ class Estrelas(commands.Cog):
             inline=True,
         )
         embed.add_field(name="\u200b", value="\u200b", inline=True)
-
         embed.add_field(
             name="📅 Entrou no servidor",
             value=discord.utils.format_dt(membro.joined_at, style="D") if membro.joined_at else "Desconhecido",
@@ -233,7 +350,6 @@ class Estrelas(commands.Cog):
             inline=True,
         )
         embed.add_field(name="\u200b", value="\u200b", inline=True)
-
         embed.add_field(
             name=f"🎭 Cargos ({len(roles)})",
             value=", ".join(roles) if roles else "Nenhum cargo",
@@ -284,7 +400,7 @@ class Estrelas(commands.Cog):
             inline=True,
         )
         if total == 0:
-            embed.set_footer(text="Peça a um moderador para te dar uma estrela!")
+            embed.set_footer(text="Peça a um administrador para te dar uma estrela!")
         elif posicao == 1:
             embed.set_footer(text="Você está em primeiro lugar! 🏆")
         else:
@@ -301,22 +417,17 @@ class Estrelas(commands.Cog):
         data = _load()
         guild_data = data.get(str(interaction.guild_id), {})
 
-        if not guild_data:
-            await interaction.response.send_message("Nenhuma estrela foi concedida ainda neste servidor.", ephemeral=True)
-            return
-
-        sorted_members = sorted(guild_data.items(), key=lambda x: x[1]["estrelas"], reverse=True)
-        sorted_members = [(uid, info) for uid, info in sorted_members if info["estrelas"] > 0]
+        sorted_members = sorted(
+            [(uid, info) for uid, info in guild_data.items() if info["estrelas"] > 0],
+            key=lambda x: x[1]["estrelas"],
+            reverse=True,
+        )
 
         if not sorted_members:
             await interaction.response.send_message("Nenhuma estrela ativa no servidor.", ephemeral=True)
             return
 
-        embed = discord.Embed(
-            title="🏆 Ranking de Estrelas",
-            color=discord.Color.gold(),
-        )
-
+        embed = discord.Embed(title="🏆 Ranking de Estrelas", color=discord.Color.gold())
         medals = ["🥇", "🥈", "🥉"]
         lines = []
         for i, (uid, info) in enumerate(sorted_members[:10]):
