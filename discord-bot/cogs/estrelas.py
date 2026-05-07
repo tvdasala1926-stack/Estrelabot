@@ -184,6 +184,49 @@ class Estrelas(commands.Cog):
         view = ConfirmacaoView(membro=membro, moderador=interaction.user)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
+    @app_commands.command(name="minhas-estrelas", description="Veja suas estrelas e sua posição no ranking")
+    async def minhas_estrelas(self, interaction: discord.Interaction):
+        data = _load()
+        guild_data = data.get(str(interaction.guild_id), {})
+        user_id = str(interaction.user.id)
+        entry = guild_data.get(user_id)
+        total = entry["estrelas"] if entry else 0
+
+        sorted_members = sorted(
+            [(uid, info) for uid, info in guild_data.items() if info["estrelas"] > 0],
+            key=lambda x: x[1]["estrelas"],
+            reverse=True,
+        )
+        posicao = next((i + 1 for i, (uid, _) in enumerate(sorted_members) if uid == user_id), None)
+
+        embed = discord.Embed(
+            title="⭐ Suas Estrelas",
+            color=discord.Color.gold() if total > 0 else discord.Color.greyple(),
+        )
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.add_field(
+            name="Total",
+            value=f"{'⭐' * min(total, 10)} **({total})**" if total > 0 else "Nenhuma ainda",
+            inline=True,
+        )
+        embed.add_field(
+            name="Posição no ranking",
+            value=f"**#{posicao}** de {len(sorted_members)}" if posicao else "Fora do ranking",
+            inline=True,
+        )
+        if total == 0:
+            embed.set_footer(text="Peça a um moderador para te dar uma estrela!")
+        elif posicao == 1:
+            embed.set_footer(text="Você está em primeiro lugar! 🏆")
+        else:
+            acima = sorted_members[posicao - 2]
+            faltam = acima[1]["estrelas"] - total
+            nome_acima = interaction.guild.get_member(int(acima[0]))
+            nome_acima = nome_acima.display_name if nome_acima else acima[1]["nome"]
+            embed.set_footer(text=f"Faltam {faltam} estrela(s) para superar {nome_acima}")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
     @app_commands.command(name="ranking", description="Mostra o ranking de estrelas do servidor")
     async def ranking(self, interaction: discord.Interaction):
         data = _load()
