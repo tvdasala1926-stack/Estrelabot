@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import timezone
+import re
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -32,7 +33,8 @@ def _save(data: dict) -> None:
 
 
 def _base_name(nickname: str) -> str:
-    return nickname.replace("⭐", "").strip()
+    cleaned = re.sub(r'\s*\(\d+\)⭐', '', nickname)
+    return cleaned.replace("⭐", "").strip()
 
 
 def _record(entry: dict, acao: str, por: discord.Member, motivo: str = None) -> None:
@@ -101,7 +103,7 @@ class ConfirmacaoView(discord.ui.View):
         _save(data)
 
         base = _base_name(self.membro.display_name)
-        novo_apelido = f"{base} {'⭐' * total}".strip() if total > 0 else base
+        novo_apelido = f"{base} ({total})⭐" if total > 0 else base
         try:
             await self.membro.edit(nick=novo_apelido if novo_apelido != self.membro.name else None)
             apelido_msg = f"Apelido atualizado para **{novo_apelido or self.membro.name}**"
@@ -112,7 +114,7 @@ class ConfirmacaoView(discord.ui.View):
         embed.add_field(name="Membro", value=self.membro.mention, inline=True)
         embed.add_field(
             name="Estrelas restantes",
-            value=f"{'⭐' * total} ({total})" if total > 0 else "Nenhuma",
+            value=f"({total})⭐" if total > 0 else "Nenhuma",
             inline=True,
         )
         embed.add_field(name="Apelido", value=apelido_msg, inline=False)
@@ -124,7 +126,7 @@ class ConfirmacaoView(discord.ui.View):
         log_embed.add_field(name="Removida por", value=interaction.user.mention, inline=True)
         log_embed.add_field(
             name="Total atual",
-            value=f"{'⭐' * total} ({total})" if total > 0 else "Nenhuma",
+            value=f"({total})⭐" if total > 0 else "Nenhuma",
             inline=True,
         )
         log_embed.timestamp = discord.utils.utcnow()
@@ -244,7 +246,7 @@ class Estrelas(commands.Cog):
         _save(data)
 
         base = _base_name(membro.display_name)
-        novo_apelido = f"{base} {'⭐' * total}"
+        novo_apelido = f"{base} ({total})⭐"
         try:
             await membro.edit(nick=novo_apelido)
             apelido_msg = f"Apelido atualizado para **{novo_apelido}**"
@@ -253,7 +255,7 @@ class Estrelas(commands.Cog):
 
         embed = discord.Embed(title="⭐ Estrela concedida!", color=discord.Color.gold())
         embed.add_field(name="Membro", value=membro.mention, inline=True)
-        embed.add_field(name="Total de estrelas", value=f"{'⭐' * min(total, 10)} ({total})", inline=True)
+        embed.add_field(name="Total de estrelas", value=f"({total})⭐", inline=True)
         if motivo:
             embed.add_field(name="Motivo", value=motivo, inline=False)
         embed.add_field(name="Apelido", value=apelido_msg, inline=False)
@@ -263,7 +265,7 @@ class Estrelas(commands.Cog):
         log_embed = discord.Embed(title="⭐ Estrela concedida", color=discord.Color.gold())
         log_embed.add_field(name="Membro", value=membro.mention, inline=True)
         log_embed.add_field(name="Concedida por", value=interaction.user.mention, inline=True)
-        log_embed.add_field(name="Total atual", value=f"{'⭐' * min(total, 10)} ({total})", inline=True)
+        log_embed.add_field(name="Total atual", value=f"({total})⭐", inline=True)
         if motivo:
             log_embed.add_field(name="Motivo", value=motivo, inline=False)
         log_embed.timestamp = discord.utils.utcnow()
@@ -296,8 +298,8 @@ class Estrelas(commands.Cog):
             title="⚠️ Confirmar remoção de estrela",
             description=(
                 f"Tem certeza que quer remover uma estrela de {membro.mention}?\n\n"
-                f"Estrelas atuais: {'⭐' * total_atual} **({total_atual})**\n"
-                f"Após a remoção: {'⭐' * (total_atual - 1)} **({total_atual - 1})**"
+                f"Estrelas atuais: **({total_atual})⭐**\n"
+                f"Após a remoção: **({total_atual - 1})⭐**"
                 if total_atual > 1
                 else f"Tem certeza que quer remover a última estrela de {membro.mention}?"
             ),
@@ -330,7 +332,7 @@ class Estrelas(commands.Cog):
             title="⚠️ Confirmar reset de estrelas",
             description=(
                 f"Tem certeza que quer **zerar todas as estrelas** de {membro.mention}?\n\n"
-                f"Estrelas atuais: {'⭐' * min(total_atual, 10)} **({total_atual})**\n"
+                f"Estrelas atuais: **({total_atual})⭐**\n"
                 f"Após o reset: **0 estrelas** e ⭐ removidos do apelido."
             ),
             color=discord.Color.dark_red(),
@@ -363,7 +365,7 @@ class Estrelas(commands.Cog):
         embed.set_thumbnail(url=membro.display_avatar.url)
         embed.add_field(
             name="Total atual",
-            value=f"{'⭐' * min(total, 10)} ({total})" if total > 0 else "Nenhuma",
+            value=f"({total})⭐" if total > 0 else "Nenhuma",
             inline=False,
         )
 
@@ -424,7 +426,7 @@ class Estrelas(commands.Cog):
         embed.set_thumbnail(url=membro.display_avatar.url)
         embed.add_field(
             name="⭐ Estrelas",
-            value=f"{'⭐' * min(total, 10)} **({total})**" if total > 0 else "Nenhuma",
+            value=f"**({total})⭐**" if total > 0 else "Nenhuma",
             inline=True,
         )
         embed.add_field(
@@ -485,7 +487,7 @@ class Estrelas(commands.Cog):
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(
             name="Total",
-            value=f"{'⭐' * min(total, 10)} **({total})**" if total > 0 else "Nenhuma ainda",
+            value=f"**({total})⭐**" if total > 0 else "Nenhuma ainda",
             inline=True,
         )
         embed.add_field(
@@ -529,7 +531,7 @@ class Estrelas(commands.Cog):
             member = interaction.guild.get_member(int(uid))
             display = member.mention if member else f"**{info['nome']}**"
             stars = info["estrelas"]
-            lines.append(f"{prefix} {display} — {'⭐' * min(stars, 10)} **({stars})**")
+            lines.append(f"{prefix} {display} — **({stars})⭐**")
 
         embed.description = "\n".join(lines)
         embed.set_footer(text=f"Top {len(lines)} membros · {interaction.guild.name}")

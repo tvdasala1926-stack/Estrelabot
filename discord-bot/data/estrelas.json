@@ -2,11 +2,31 @@
   "1481027772917743660": {
     "1307865439778373684": {
       "nome": "piu_st4rs",
-      "estrelas": 1
+      "estrelas": 4,
+      "historico": [
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-07T23:57:50.855919+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-08T00:31:07.893199+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T02:17:44.640603+00:00"
+        }
+      ]
     },
     "1195766085849460861": {
       "nome": "fodecacheada",
-      "estrelas": 0,
+      "estrelas": 3,
       "historico": [
         {
           "acao": "concedida",
@@ -20,6 +40,98 @@
           "por": "marquesx_uaii",
           "por_id": "1461906585755582560",
           "data": "2026-05-07T02:48:52.536080+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-07T22:59:02.329789+00:00",
+          "motivo": "Por ser um ótimo membro da staff"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-08T00:30:51.241062+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-08T00:30:57.954663+00:00"
+        }
+      ]
+    },
+    "1472681049132765194": {
+      "nome": "limaa778_90938",
+      "estrelas": 4,
+      "historico": [
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-07T22:59:32.441107+00:00",
+          "motivo": "Por ser um ótimo membro da Staff"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-08T00:43:00.411284+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-08T00:43:07.225132+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T02:17:38.694148+00:00"
+        }
+      ]
+    },
+    "1461906585755582560": {
+      "nome": "marquesx_uaii",
+      "estrelas": 3,
+      "historico": [
+        {
+          "acao": "concedida",
+          "por": "piu_st4rs",
+          "por_id": "1307865439778373684",
+          "data": "2026-05-08T00:54:59.671950+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "piu_st4rs",
+          "por_id": "1307865439778373684",
+          "data": "2026-05-08T00:55:10.285245+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "piu_st4rs",
+          "por_id": "1307865439778373684",
+          "data": "2026-05-08T00:55:17.938688+00:00"
+        }
+      ]
+    },
+    "1437579354421854219": {
+      "nome": "thurxz0179",
+      "estrelas": 2,
+      "historico": [
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T02:17:57.953250+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T02:54:31.898003+00:00"
         }
       ]
     }
