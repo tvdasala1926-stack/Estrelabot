@@ -37,7 +37,7 @@ def _base_name(nickname: str) -> str:
     return cleaned.replace("⭐", "").strip()
 
 
-def _record(entry: dict, acao: str, por: discord.Member, motivo: str = None) -> None:
+def _record(entry: dict, acao: str, por: discord.Member, motivo: str = None, quantidade: int = 1) -> None:
     historico = entry.setdefault("historico", [])
     evento = {
         "acao": acao,
@@ -45,6 +45,8 @@ def _record(entry: dict, acao: str, por: discord.Member, motivo: str = None) -> 
         "por_id": str(por.id),
         "data": discord.utils.utcnow().replace(tzinfo=timezone.utc).isoformat(),
     }
+    if quantidade != 1:
+        evento["quantidade"] = quantidade
     if motivo:
         evento["motivo"] = motivo
     historico.append(evento)
@@ -217,18 +219,30 @@ class Estrelas(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="estrela", description="Dá uma estrela para um membro do servidor")
+    @app_commands.command(name="estrela", description="Dá uma ou mais estrelas para um membro do servidor")
     @app_commands.describe(
-        membro="O membro que vai receber a estrela",
-        motivo="Motivo da estrela (opcional)",
+        membro="O membro que vai receber a(s) estrela(s)",
+        quantidade="Quantidade de estrelas a conceder (padrão: 1, máximo: 50)",
+        motivo="Motivo da(s) estrela(s) (opcional)",
     )
     @app_commands.default_permissions(administrator=True)
-    async def estrela(self, interaction: discord.Interaction, membro: discord.Member, motivo: str = None):
+    async def estrela(
+        self,
+        interaction: discord.Interaction,
+        membro: discord.Member,
+        quantidade: int = 1,
+        motivo: str = None,
+    ):
         if membro.bot:
             await interaction.response.send_message("Bots não podem receber estrelas.", ephemeral=True)
             return
         if membro == interaction.user:
             await interaction.response.send_message("Você não pode dar uma estrela para si mesmo.", ephemeral=True)
+            return
+        if quantidade < 1 or quantidade > 50:
+            await interaction.response.send_message(
+                "A quantidade deve ser entre **1** e **50**.", ephemeral=True
+            )
             return
 
         await interaction.response.defer()
@@ -239,10 +253,11 @@ class Estrelas(commands.Cog):
 
         guild_data = data.setdefault(guild_id, {})
         entry = guild_data.setdefault(user_id, {"nome": membro.name, "estrelas": 0})
-        entry["estrelas"] += 1
+        anterior = entry["estrelas"]
+        entry["estrelas"] += quantidade
         entry["nome"] = membro.name
         total = entry["estrelas"]
-        _record(entry, "concedida", interaction.user, motivo)
+        _record(entry, "concedida", interaction.user, motivo, quantidade=quantidade)
         _save(data)
 
         base = _base_name(membro.display_name)
@@ -253,27 +268,34 @@ class Estrelas(commands.Cog):
         except discord.Forbidden:
             apelido_msg = "Não foi possível editar o apelido (sem permissão sobre esse membro)"
 
-        embed = discord.Embed(title="⭐ Estrela concedida!", color=discord.Color.gold())
+        plural = quantidade > 1
+        titulo = f"⭐ {quantidade} estrela{'s' if plural else ''} concedida{'s' if plural else ''}!"
+        embed = discord.Embed(title=titulo, color=discord.Color.gold())
         embed.add_field(name="Membro", value=membro.mention, inline=True)
+        if plural:
+            embed.add_field(name="Concedidas", value=f"+{quantidade}⭐", inline=True)
         embed.add_field(name="Total de estrelas", value=f"({total})⭐", inline=True)
         if motivo:
             embed.add_field(name="Motivo", value=motivo, inline=False)
         embed.add_field(name="Apelido", value=apelido_msg, inline=False)
-        embed.set_footer(text=f"Concedida por {interaction.user}")
+        embed.set_footer(text=f"Concedida{'s' if plural else ''} por {interaction.user}")
         await interaction.followup.send(embed=embed)
 
-        log_embed = discord.Embed(title="⭐ Estrela concedida", color=discord.Color.gold())
+        log_embed = discord.Embed(title=titulo, color=discord.Color.gold())
         log_embed.add_field(name="Membro", value=membro.mention, inline=True)
-        log_embed.add_field(name="Concedida por", value=interaction.user.mention, inline=True)
+        log_embed.add_field(name=f"Concedida{'s' if plural else ''} por", value=interaction.user.mention, inline=True)
+        if plural:
+            log_embed.add_field(name="Quantidade", value=f"+{quantidade}⭐", inline=True)
         log_embed.add_field(name="Total atual", value=f"({total})⭐", inline=True)
         if motivo:
             log_embed.add_field(name="Motivo", value=motivo, inline=False)
         log_embed.timestamp = discord.utils.utcnow()
         await _send_log(interaction.guild, log_embed)
 
-        if total in MILESTONES:
-            msg = MILESTONE_MSGS[total].format(mention=membro.mention)
-            await interaction.followup.send(content=msg)
+        for milestone in sorted(MILESTONES):
+            if anterior < milestone <= total:
+                msg = MILESTONE_MSGS[milestone].format(mention=membro.mention)
+                await interaction.followup.send(content=msg)
 
     @app_commands.command(name="tirar-estrela", description="Remove uma estrela de um membro")
     @app_commands.describe(membro="O membro que vai perder a estrela")
@@ -387,7 +409,9 @@ class Estrelas(commands.Cog):
             else:
                 emoji = "🔄"
 
-            linha = f"{emoji} **{acao.capitalize()}** por `{ev['por']}` — {timestamp}"
+            qtd = ev.get("quantidade", 1)
+            qtd_str = f" **×{qtd}**" if qtd > 1 else ""
+            linha = f"{emoji} **{acao.capitalize()}**{qtd_str} por `{ev['por']}` — {timestamp}"
             if ev.get("motivo"):
                 linha += f"\n　　*Motivo: {ev['motivo']}*"
             linhas.append(linha)

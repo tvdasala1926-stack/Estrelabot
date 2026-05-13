@@ -2,7 +2,7 @@
   "1481027772917743660": {
     "1307865439778373684": {
       "nome": "piu_st4rs",
-      "estrelas": 4,
+      "estrelas": 10,
       "historico": [
         {
           "acao": "concedida",
@@ -21,6 +21,72 @@
           "por": "marquesx_uaii",
           "por_id": "1461906585755582560",
           "data": "2026-05-09T02:17:44.640603+00:00"
+        },
+        {
+          "acao": "resetada (4 estrelas)",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T22:37:57.980468+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T22:38:11.356667+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T22:38:22.287397+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T22:38:30.927425+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T22:38:50.567655+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T22:38:56.908900+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T22:39:04.195984+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-12T01:22:50.938055+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-12T01:26:48.510687+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-12T01:27:00.846150+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-12T01:27:08.292102+00:00"
         }
       ]
     },
@@ -64,7 +130,7 @@
     },
     "1472681049132765194": {
       "nome": "limaa778_90938",
-      "estrelas": 4,
+      "estrelas": 5,
       "historico": [
         {
           "acao": "concedida",
@@ -90,12 +156,18 @@
           "por": "marquesx_uaii",
           "por_id": "1461906585755582560",
           "data": "2026-05-09T02:17:38.694148+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-09T22:36:27.903378+00:00"
         }
       ]
     },
     "1461906585755582560": {
       "nome": "marquesx_uaii",
-      "estrelas": 3,
+      "estrelas": 5,
       "historico": [
         {
           "acao": "concedida",
@@ -114,12 +186,25 @@
           "por": "piu_st4rs",
           "por_id": "1307865439778373684",
           "data": "2026-05-08T00:55:17.938688+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "piu_st4rs",
+          "por_id": "1307865439778373684",
+          "data": "2026-05-09T22:38:58.398442+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "fodecacheada",
+          "por_id": "1195766085849460861",
+          "data": "2026-05-12T01:23:55.024800+00:00",
+          "motivo": "é um otimo amg"
         }
       ]
     },
     "1437579354421854219": {
       "nome": "thurxz0179",
-      "estrelas": 2,
+      "estrelas": 5,
       "historico": [
         {
           "acao": "concedida",
@@ -132,6 +217,36 @@
           "por": "marquesx_uaii",
           "por_id": "1461906585755582560",
           "data": "2026-05-09T02:54:31.898003+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-12T01:22:59.321157+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-12T01:24:24.298845+00:00"
+        },
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-12T01:26:39.707620+00:00"
+        }
+      ]
+    },
+    "1294498432521605190": {
+      "nome": "wz6.slvx",
+      "estrelas": 1,
+      "historico": [
+        {
+          "acao": "concedida",
+          "por": "marquesx_uaii",
+          "por_id": "1461906585755582560",
+          "data": "2026-05-12T01:23:13.713039+00:00"
         }
       ]
     }
