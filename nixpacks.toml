@@ -1,0 +1,5 @@
+[phases.install]
+cmds = ["pip install -r discord-bot/requirements.txt"]
+
+[start]
+cmd = "cd discord-bot && python bot.py"
