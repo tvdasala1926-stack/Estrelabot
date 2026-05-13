@@ -67,10 +67,11 @@ async def _send_log(guild: discord.Guild, embed: discord.Embed) -> None:
 
 
 class ConfirmacaoView(discord.ui.View):
-    def __init__(self, membro: discord.Member, moderador: discord.Member):
+    def __init__(self, membro: discord.Member, moderador: discord.Member, quantidade: int = 1):
         super().__init__(timeout=30)
         self.membro = membro
         self.moderador = moderador
+        self.quantidade = quantidade
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.moderador.id:
@@ -99,9 +100,10 @@ class ConfirmacaoView(discord.ui.View):
             )
             return
 
-        entry["estrelas"] -= 1
+        removidas = min(self.quantidade, entry["estrelas"])
+        entry["estrelas"] -= removidas
         total = entry["estrelas"]
-        _record(entry, "removida", interaction.user)
+        _record(entry, "removida", interaction.user, quantidade=removidas)
         _save(data)
 
         base = _base_name(self.membro.display_name)
@@ -112,20 +114,26 @@ class ConfirmacaoView(discord.ui.View):
         except discord.Forbidden:
             apelido_msg = "Não foi possível editar o apelido (sem permissão sobre esse membro)"
 
-        embed = discord.Embed(title="🗑️ Estrela removida", color=discord.Color.red())
+        plural = removidas > 1
+        titulo = f"🗑️ {removidas} estrela{'s' if plural else ''} removida{'s' if plural else ''}!"
+        embed = discord.Embed(title=titulo, color=discord.Color.red())
         embed.add_field(name="Membro", value=self.membro.mention, inline=True)
+        if plural:
+            embed.add_field(name="Removidas", value=f"-{removidas}⭐", inline=True)
         embed.add_field(
             name="Estrelas restantes",
             value=f"({total})⭐" if total > 0 else "Nenhuma",
             inline=True,
         )
         embed.add_field(name="Apelido", value=apelido_msg, inline=False)
-        embed.set_footer(text=f"Removida por {interaction.user}")
+        embed.set_footer(text=f"Removida{'s' if plural else ''} por {interaction.user}")
         await interaction.response.edit_message(content=None, embed=embed, view=self)
 
-        log_embed = discord.Embed(title="🗑️ Estrela removida", color=discord.Color.red())
+        log_embed = discord.Embed(title=titulo, color=discord.Color.red())
         log_embed.add_field(name="Membro", value=self.membro.mention, inline=True)
-        log_embed.add_field(name="Removida por", value=interaction.user.mention, inline=True)
+        log_embed.add_field(name=f"Removida{'s' if plural else ''} por", value=interaction.user.mention, inline=True)
+        if plural:
+            log_embed.add_field(name="Quantidade", value=f"-{removidas}⭐", inline=True)
         log_embed.add_field(
             name="Total atual",
             value=f"({total})⭐" if total > 0 else "Nenhuma",
@@ -297,12 +305,25 @@ class Estrelas(commands.Cog):
                 msg = MILESTONE_MSGS[milestone].format(mention=membro.mention)
                 await interaction.followup.send(content=msg)
 
-    @app_commands.command(name="tirar-estrela", description="Remove uma estrela de um membro")
-    @app_commands.describe(membro="O membro que vai perder a estrela")
+    @app_commands.command(name="tirar-estrela", description="Remove uma ou mais estrelas de um membro")
+    @app_commands.describe(
+        membro="O membro que vai perder a(s) estrela(s)",
+        quantidade="Quantidade de estrelas a remover (padrão: 1)",
+    )
     @app_commands.default_permissions(manage_nicknames=True)
-    async def tirar_estrela(self, interaction: discord.Interaction, membro: discord.Member):
+    async def tirar_estrela(
+        self,
+        interaction: discord.Interaction,
+        membro: discord.Member,
+        quantidade: int = 1,
+    ):
         if membro.bot:
             await interaction.response.send_message("Bots não têm estrelas.", ephemeral=True)
+            return
+        if quantidade < 1:
+            await interaction.response.send_message(
+                "A quantidade deve ser pelo menos **1**.", ephemeral=True
+            )
             return
 
         data = _load()
@@ -316,19 +337,32 @@ class Estrelas(commands.Cog):
             )
             return
 
-        embed = discord.Embed(
-            title="⚠️ Confirmar remoção de estrela",
-            description=(
-                f"Tem certeza que quer remover uma estrela de {membro.mention}?\n\n"
+        a_remover = min(quantidade, total_atual)
+        apos = total_atual - a_remover
+        plural = a_remover > 1
+
+        if a_remover == total_atual:
+            desc = (
+                f"Tem certeza que quer remover **toda{'s as' if plural else ' a'} "
+                f"{a_remover} estrela{'s' if plural else ''}** de {membro.mention}?\n\n"
                 f"Estrelas atuais: **({total_atual})⭐**\n"
-                f"Após a remoção: **({total_atual - 1})⭐**"
-                if total_atual > 1
-                else f"Tem certeza que quer remover a última estrela de {membro.mention}?"
-            ),
+                f"Após a remoção: **Nenhuma**"
+            )
+        else:
+            desc = (
+                f"Tem certeza que quer remover **{a_remover} estrela{'s' if plural else ''}** "
+                f"de {membro.mention}?\n\n"
+                f"Estrelas atuais: **({total_atual})⭐**\n"
+                f"Após a remoção: **({apos})⭐**"
+            )
+
+        embed = discord.Embed(
+            title=f"⚠️ Confirmar remoção de {a_remover} estrela{'s' if plural else ''}",
+            description=desc,
             color=discord.Color.orange(),
         )
         embed.set_footer(text="Esta ação expira em 30 segundos.")
-        view = ConfirmacaoView(membro=membro, moderador=interaction.user)
+        view = ConfirmacaoView(membro=membro, moderador=interaction.user, quantidade=a_remover)
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     @app_commands.command(name="resetar-estrelas", description="Zera todas as estrelas de um membro e remove os ⭐ do apelido")
